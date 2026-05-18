@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>প্রপার্টি ম্যানেজমেন্ট (Demo)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
+        .glass-header { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(15px); }
+        .hidden { display: none !important; }
+        
+        .bari-card { 
+            background: white; border-radius: 40px; overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        .bari-card:active { transform: scale(0.95); }
+        
+        .status-btn { transition: all 0.1s; border-bottom: 4px solid rgba(0, 0, 0, 0.15); }
+        .status-btn:active { transform: translateY(3px); border-bottom-width: 0px; }
+
+        .active-tab { 
+            background-color: white !important;
+            transform: translateY(-5px);
+            border: 2px solid #3b82f6 !important;
+            box-shadow: 0 15px 20px -5px rgba(59, 130, 246, 0.2) !important;
+        }
+        .active-indicator { width: 8px; height: 8px; background-color: #3b82f6; border-radius: 50%; margin: 6px auto 0; display: none; }
+        .active-tab .active-indicator { display: block; }
+    </style>
+</head>
+<body class="pb-12">
+
+    <!-- Bari Header -->
+    <header id="bari-header" class="glass-header sticky top-0 z-50 px-6 py-7 border-b border-slate-200 mb-8 shadow-sm">
+        <div class="max-w-7xl mx-auto">
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight">প্রপার্টি ড্যাশবোর্ড <span class="text-xs text-red-500 font-normal">(Demo)</span></h1>
+            <p id="total-bari-count" class="text-blue-600 text-sm font-bold mt-1 uppercase tracking-widest">লোডিং...</p>
+        </div>
+    </header>
+
+    <!-- Room Header -->
+    <header id="room-header" class="glass-header sticky top-0 z-50 px-4 py-5 border-b border-slate-200 mb-8 shadow-sm hidden">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex justify-between items-center mb-6">
+                <button onclick="showBariList()" class="flex items-center text-slate-600 font-bold text-xs bg-slate-100 px-5 py-3 rounded-2xl active:scale-90 transition-all">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"></path></svg>
+                    পিছনে
+                </button>
+                <h1 id="selected-bari-name" class="text-xl md:text-2xl font-black text-slate-800"></h1>
+                <button onclick="applyFilter('All')" id="btn-show-all" class="text-[11px] font-black px-5 py-3 rounded-2xl shadow-md border-2 uppercase transition-all duration-300">সবগুলো</button>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-3 max-w-4xl mx-auto">
+                <div onclick="applyFilter('Khali')" id="tab-Khali" class="bg-red-50/60 rounded-[35px] p-4 text-center cursor-pointer border border-transparent transition-all">
+                    <p class="text-[10px] text-red-600 font-bold uppercase">খালি</p>
+                    <p id="count-khali" class="text-xl md:text-3xl font-black text-red-700">০</p>
+                    <div class="active-indicator"></div>
+                </div>
+                <div onclick="applyFilter('Bhara')" id="tab-Bhara" class="bg-green-50/60 rounded-[35px] p-4 text-center cursor-pointer border border-transparent transition-all">
+                    <p class="text-[10px] text-green-600 font-bold uppercase">ভাড়া</p>
+                    <p id="count-bhara" class="text-xl md:text-3xl font-black text-green-700">০</p>
+                    <div class="active-indicator"></div>
+                </div>
+                <div onclick="applyFilter('Next Month')" id="tab-Next" class="bg-yellow-50/60 rounded-[35px] p-4 text-center cursor-pointer border border-transparent transition-all">
+                    <p class="text-[10px] text-yellow-600 font-bold uppercase">সামনে</p>
+                    <p id="count-next" class="text-xl md:text-3xl font-black text-yellow-700">০</p>
+                    <div class="active-indicator"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-5">
+        <div id="bari-view" class="grid grid-cols-1 md:grid-cols-3 gap-8"></div>
+        <div id="room-view" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 hidden"></div>
+    </main>
+
+    <script>
+        const dummyProperties = [
+            { id: 1, name: "স্বপ্ননীল ভিলা", total_rooms: 8, image_url: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80" },
+            { id: 2, name: "আকাশছোঁয়া টাওয়ার", total_rooms: 6, image_url: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80" },
+            { id: 3, name: "সবুজ ছায়া হাউজিং", total_rooms: 5, image_url: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80" }
+        ];
+
+        let dummyRooms = [];
+        const statuses = ['Khali', 'Bhara', 'Next Month'];
+
+        dummyProperties.forEach(prop => {
+            for(let i=1; i<=prop.total_rooms; i++) {
+                dummyRooms.push({
+                    id: 'room-' + prop.id + '-' + i,
+                    property_id: prop.id,
+                    room_no: 100 + i,
+                    status: statuses[Math.floor(Math.random() * statuses.length)],
+                    updated_at: new Date().toISOString()
+                });
+            }
+        });
+
+        let currentPropertyRooms = [];
+        let currentFilter = 'All';
+
+        function fetchBariList() {
+            const container = document.getElementById('bari-view');
+            document.getElementById('total-bari-count').innerText = `${replaceNumbers(dummyProperties.length)} টি প্রপার্টি তালিকাভুক্ত আছে`;
+            
+            container.innerHTML = dummyProperties.map(bari => `
+                <div class="bari-card" onclick="loadRooms(${bari.id}, '${bari.name}')">
+                    <img src="${bari.image_url}" class="w-full h-52 object-cover">
+                    <div class="p-7 flex justify-between items-center">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800 leading-tight">${bari.name}</h2>
+                            <p class="text-slate-400 text-xs font-bold uppercase mt-1 tracking-widest">${replaceNumbers(bari.total_rooms)} টি রুম</p>
+                        </div>
+                        <div class="bg-blue-600 h-12 w-12 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            gsap.from(".bari-card", { opacity: 0, y: 30, stagger: 0.1, duration: 0.6, ease: "power2.out" });
+        }
+
+        function loadRooms(propId, propName) {
+            // Hide Bari View
+            gsap.to(["#bari-header", "#bari-view"], { opacity: 0, y: -20, duration: 0.3, onComplete: () => {
+                document.getElementById('bari-header').classList.add('hidden');
+                document.getElementById('bari-view').classList.add('hidden');
+                
+                // Show Room View
+                const roomHeader = document.getElementById('room-header');
+                const roomView = document.getElementById('room-view');
+                roomHeader.classList.remove('hidden');
+                roomView.classList.remove('hidden');
+                document.getElementById('selected-bari-name').innerText = propName;
+
+                gsap.fromTo([roomHeader, roomView], { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4 });
+
+                currentPropertyRooms = dummyRooms.filter(r => r.property_id === propId);
+                updateCounters();
+                applyFilter('All');
+            }});
+        }
+
+        function showBariList() {
+            // Hide Room View
+            gsap.to(["#room-header", "#room-view"], { opacity: 0, y: 20, duration: 0.3, onComplete: () => {
+                document.getElementById('room-header').classList.add('hidden');
+                document.getElementById('room-view').classList.add('hidden');
+                
+                // Show Bari View
+                const bariHeader = document.getElementById('bari-header');
+                const bariView = document.getElementById('bari-view');
+                bariHeader.classList.remove('hidden');
+                bariView.classList.remove('hidden');
+
+                // এনিমেশন রিসেট করে আবার দেখানো
+                gsap.fromTo([bariHeader, bariView], { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.4 });
+            }});
+        }
+
+        function updateStatus(roomId, newStatus) {
+            const card = document.getElementById(`card-${roomId}`);
+            const room = dummyRooms.find(r => r.id === roomId);
+            if (room) {
+                room.status = newStatus;
+                room.updated_at = new Date().toISOString();
+                
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `স্ট্যাটাস: ${translateStatus(newStatus)}`,
+                    showConfirmButton: false,
+                    timer: 1000
+                });
+
+                currentPropertyRooms = dummyRooms.filter(r => r.property_id === room.property_id);
+                updateCounters();
+                applyFilter(currentFilter);
+            }
+        }
+
+        function renderRoomList(data) {
+            const container = document.getElementById('room-view');
+            if(data.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-20 text-center text-slate-400 font-bold">এই ক্যাটাগরিতে কোনো রুম নেই</div>`;
+                return;
+            }
+
+            container.innerHTML = data.map(room => `
+                <div id="card-${room.id}" class="room-card bg-white p-6 rounded-[40px] shadow-sm border-l-[12px] ${getStatusColor(room.status)}">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 class="text-xl md:text-2xl font-black text-slate-800">বাসা নং - ${replaceNumbers(room.room_no)}</h2>
+                            <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase italic tracking-widest">${formatDate(room.updated_at)}</p>
+                        </div>
+                        <span class="text-[10px] font-black px-4 py-2 rounded-xl border ${getBadgeClass(room.status)} uppercase">${translateStatus(room.status)}</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="updateStatus('${room.id}', 'Khali')" class="status-btn py-5 rounded-[22px] bg-red-50 text-red-700 font-black text-[12px] border-red-100">খালি</button>
+                        <button onclick="updateStatus('${room.id}', 'Bhara')" class="status-btn py-5 rounded-[22px] bg-green-50 text-green-700 font-black text-[12px] border-green-100">ভাড়া</button>
+                        <button onclick="updateStatus('${room.id}', 'Next Month')" class="status-btn py-5 rounded-[22px] bg-yellow-50 text-yellow-800 font-black text-[10px] border-yellow-100 leading-tight">সামনে</button>
+                    </div>
+                </div>
+            `).join('');
+
+            gsap.from(".room-card", { opacity: 0, scale: 0.9, y: 20, stagger: 0.05, duration: 0.3 });
+        }
+
+        function applyFilter(status) {
+            currentFilter = status;
+            const btnAll = document.getElementById('btn-show-all');
+            ['Khali', 'Bhara', 'Next'].forEach(id => document.getElementById(`tab-${id}`).classList.remove('active-tab'));
+            
+            if(status === 'All') {
+                btnAll.className = "text-[11px] font-black px-5 py-3 rounded-2xl shadow-md border-2 uppercase bg-blue-600 text-white border-blue-700";
+            } else {
+                btnAll.className = "text-[11px] font-black px-5 py-3 rounded-2xl shadow-md border-2 uppercase bg-white text-slate-800 border-slate-200";
+                const tabId = status === 'Next Month' ? 'tab-Next' : `tab-${status}`;
+                document.getElementById(tabId).classList.add('active-tab');
+            }
+
+            const filtered = currentPropertyRooms.filter(r => status === 'All' || r.status === status);
+            renderRoomList(filtered);
+        }
+
+        function updateCounters() {
+            document.getElementById('count-khali').innerText = replaceNumbers(currentPropertyRooms.filter(r => r.status === 'Khali').length);
+            document.getElementById('count-bhara').innerText = replaceNumbers(currentPropertyRooms.filter(r => r.status === 'Bhara').length);
+            document.getElementById('count-next').innerText = replaceNumbers(currentPropertyRooms.filter(r => r.status === 'Next Month').length);
+        }
+
+        function formatDate(iso) {
+            const d = new Date(iso);
+            return "Updated: " + d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+
+        function translateStatus(s) { return s === 'Khali' ? 'খালি' : s === 'Bhara' ? 'ভাড়া' : 'সামনে'; }
+        function getStatusColor(s) { return s === 'Khali' ? 'border-l-red-500' : s === 'Bhara' ? 'border-l-green-500' : 'border-l-yellow-400'; }
+        function getBadgeClass(s) { return s === 'Khali' ? 'bg-red-50 text-red-700 border-red-200' : s === 'Bhara' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'; }
+        function replaceNumbers(n) { const dict = {'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯'}; return n.toString().replace(/[0-9]/g, s => dict[s]); }
+
+        fetchBariList();
+    </script>
+</body>
+</html>
